@@ -1,17 +1,42 @@
+# == Schema Information
+#
+# Table name: note_comments
+#
+#  id         :integer          not null, primary key
+#  note_id    :integer          not null
+#  visible    :boolean          not null
+#  created_at :datetime         not null
+#  author_ip  :inet
+#  author_id  :integer
+#  body       :text
+#  event      :enum
+#
+# Indexes
+#
+#  index_note_comments_on_body        (to_tsvector('english'::regconfig, body))
+#  index_note_comments_on_created_at  (created_at)
+#  note_comments_note_id_idx          (note_id)
+#
+# Foreign Keys
+#
+#  note_comments_author_id_fkey  (author_id => users.id)
+#  note_comments_note_id_fkey    (note_id => notes.id)
+#
+
 class NoteComment < ActiveRecord::Base
   belongs_to :note, :foreign_key => :note_id, :touch => true
   belongs_to :author, :class_name => "User", :foreign_key => :author_id
 
-  validates_presence_of :id, :on => :update
-  validates_uniqueness_of :id
-  validates_presence_of :note_id
-  validates_associated :note
-  validates_presence_of :visible
-  validates_associated :author
-  validates_inclusion_of :event, :in => [ "opened", "closed", "reopened", "commented", "hidden" ]
+  validates :id, :uniqueness => true, :presence => { :on => :update },
+                 :numericality => { :on => :update, :integer_only => true }
+  validates :note, :presence => true, :associated => true
+  validates :visible, :inclusion => [true, false]
+  validates :author, :associated => true
+  validates :event, :inclusion => %w[opened closed reopened commented hidden]
+  validates :body, :length => { :maximum => 2000 }, :characters => true
 
   # Return the comment text
   def body
-    RichText.new("text", read_attribute(:body))
+    RichText.new("text", self[:body])
   end
 end

@@ -10,7 +10,7 @@ class IPAddr
   end
 end
 
-class MergeAclAddressAndMask < ActiveRecord::Migration
+class MergeAclAddressAndMask < ActiveRecord::Migration[4.2]
   def up
     Acl.find_each do |acl|
       address = IPAddr.new(acl.address)
@@ -19,7 +19,7 @@ class MergeAclAddressAndMask < ActiveRecord::Migration
 
       while netmask != "0.0.0.0"
         netmask = netmask << 1
-        prefix = prefix + 1
+        prefix += 1
       end
 
       acl.address = "#{address.mask(prefix)}/#{prefix}"

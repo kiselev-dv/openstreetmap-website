@@ -2,12 +2,12 @@ $(document).ready(function () {
   /* Hide the preview panes */
   $(".richtext_preview").hide();
 
-  /* 
+  /*
    * When the text in an edit pane is changed, clear the contents of
    * the associated preview pne so that it will be regenerated when
    * the user next switches to it.
    */
-  $(".richtext_content textarea").change(function () { 
+  $(".richtext_content textarea").change(function () {
     $(this).parents(".richtext_container").find(".richtext_preview").empty();
   });
 
@@ -44,7 +44,7 @@ $(document).ready(function () {
     var width = editor.outerWidth() - preview.outerWidth() + preview.width();
     var minHeight = editor.outerHeight() - preview.outerHeight() + preview.height();
 
-    if (preview.contents().length == 0) {
+    if (preview.contents().length === 0) {
       preview.oneTime(500, "loading", function () {
         preview.addClass("loading");
       });

@@ -9,19 +9,17 @@ class Country
     @max_lon = max_lon
   end
 
-  def self.find_by_code(code)
+  def self.find(code)
     countries[code]
   end
 
-private
-
   def self.countries
-    @@countries ||= load_countries
+    @countries ||= load_countries
   end
 
   def self.load_countries
-    countries = Hash.new
-    xml = REXML::Document.new(File.read("config/countries.xml"))
+    countries = {}
+    xml = REXML::Document.new(File.read(Rails.root.join("config", "countries.xml")))
 
     xml.elements.each("geonames/country") do |ele|
       code = ele.get_text("countryCode").to_s

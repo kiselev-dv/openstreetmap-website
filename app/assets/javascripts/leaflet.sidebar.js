@@ -1,8 +1,8 @@
-L.OSM.sidebar = function(selector) {
+L.OSM.sidebar = function (selector) {
   var control = {},
     sidebar = $(selector),
     current = $(),
-    currentButton  = $(),
+    currentButton = $(),
     map;
 
   control.addTo = function (_) {
@@ -10,19 +10,19 @@ L.OSM.sidebar = function(selector) {
     return control;
   };
 
-  control.addPane = function(pane) {
+  control.addPane = function (pane) {
     pane
       .hide()
       .appendTo(sidebar);
   };
 
-  control.togglePane = function(pane, button) {
+  control.togglePane = function (pane, button) {
     current
       .hide()
-      .trigger('hide');
+      .trigger("hide");
 
     currentButton
-      .removeClass('active');
+      .removeClass("active");
 
     if (current === pane) {
       $(sidebar).hide();
@@ -33,14 +33,14 @@ L.OSM.sidebar = function(selector) {
       currentButton = button || $();
     }
 
-    map.invalidateSize({pan: false, animate: false});
+    map.invalidateSize({ pan: false, animate: false });
 
     current
       .show()
-      .trigger('show');
+      .trigger("show");
 
     currentButton
-      .addClass('active');
+      .addClass("active");
   };
 
   return control;

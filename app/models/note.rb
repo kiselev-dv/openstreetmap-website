@@ -1,18 +1,38 @@
+# == Schema Information
+#
+# Table name: notes
+#
+#  id         :integer          not null, primary key
+#  latitude   :integer          not null
+#  longitude  :integer          not null
+#  tile       :integer          not null
+#  updated_at :datetime         not null
+#  created_at :datetime         not null
+#  status     :enum             not null
+#  closed_at  :datetime
+#
+# Indexes
+#
+#  notes_created_at_idx   (created_at)
+#  notes_tile_status_idx  (tile,status)
+#  notes_updated_at_idx   (updated_at)
+#
+
 class Note < ActiveRecord::Base
   include GeoRecord
 
-  has_many :comments, -> { where(:visible => true).order(:created_at) }, :class_name => "NoteComment", :foreign_key => :note_id
+  has_many :comments, -> { left_joins(:author).where(:visible => true, :users => { :status => [nil, "active", "confirmed"] }).order(:created_at) }, :class_name => "NoteComment", :foreign_key => :note_id
 
-  validates_presence_of :id, :on => :update
-  validates_uniqueness_of :id
-  validates_numericality_of :latitude, :only_integer => true
-  validates_numericality_of :longitude, :only_integer => true
-  validates_presence_of :closed_at if :status == "closed"
-  validates_inclusion_of :status, :in => ["open", "closed", "hidden"]
+  validates :id, :uniqueness => true, :presence => { :on => :update },
+                 :numericality => { :on => :update, :integer_only => true }
+  validates :latitude, :longitude, :numericality => { :only_integer => true }
+  validates :closed_at, :presence => true, :if => proc { :status == "closed" }
+  validates :status, :inclusion => %w[open closed hidden]
+
   validate :validate_position
 
-  scope :visible, -> { where("status != 'hidden'") }
-  scope :invisible, -> { where("status = 'hidden'") }
+  scope :visible, -> { where.not(:status => "hidden") }
+  scope :invisible, -> { where(:status => "hidden") }
 
   after_initialize :set_defaults
 
@@ -25,14 +45,14 @@ class Note < ActiveRecord::Base
   def close
     self.status = "closed"
     self.closed_at = Time.now.getutc
-    self.save
+    save
   end
 
   # Reopen a note
   def reopen
     self.status = "open"
     self.closed_at = nil
-    self.save
+    save
   end
 
   # Check if a note is visible
@@ -42,23 +62,23 @@ class Note < ActiveRecord::Base
 
   # Check if a note is closed
   def closed?
-    not closed_at.nil?
+    !closed_at.nil?
   end
 
   # Return the author object, derived from the first comment
   def author
-    self.comments.first.author
+    comments.first.author
   end
 
   # Return the author IP address, derived from the first comment
   def author_ip
-    self.comments.first.author_ip
+    comments.first.author_ip
   end
 
-private
+  private
 
   # Fill in default values for new notes
   def set_defaults
-    self.status = "open" unless self.attribute_present?(:status)
+    self.status = "open" unless attribute_present?(:status)
   end
 end

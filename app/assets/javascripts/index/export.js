@@ -1,4 +1,4 @@
-OSM.Export = function(map) {
+OSM.Export = function (map) {
   var page = {};
 
   var locationFilter = new L.LocationFilter({
@@ -36,14 +36,14 @@ OSM.Export = function(map) {
   }
 
   function setBounds(bounds) {
-    var precision = zoomPrecision(map.getZoom());
+    var precision = OSM.zoomPrecision(map.getZoom());
     $("#minlon").val(bounds.getWest().toFixed(precision));
     $("#minlat").val(bounds.getSouth().toFixed(precision));
     $("#maxlon").val(bounds.getEast().toFixed(precision));
     $("#maxlat").val(bounds.getNorth().toFixed(precision));
 
     $("#export_overpass").attr("href",
-        "http://overpass-api.de/api/map?bbox=" +
+        "https://overpass-api.de/api/map?bbox=" +
         $("#minlon").val() + "," + $("#minlat").val() + "," +
         $("#maxlon").val() + "," + $("#maxlat").val());
   }
@@ -53,25 +53,29 @@ OSM.Export = function(map) {
     $("#export_commit").toggle(getBounds().getSize() < OSM.MAX_REQUEST_AREA);
   }
 
-  page.pushstate = page.popstate = function(path) {
+  function checkSubmit(e) {
+    if (getBounds().getSize() > OSM.MAX_REQUEST_AREA) e.preventDefault();
+  }
+
+  page.pushstate = page.popstate = function (path) {
     $("#export_tab").addClass("current");
     OSM.loadSidebarContent(path, page.load);
   };
 
-  page.load = function() {
+  page.load = function () {
     map
       .addLayer(locationFilter)
       .on("moveend", update);
 
     $("#maxlat, #minlon, #maxlon, #minlat").change(boundsChanged);
     $("#drag_box").click(enableFilter);
-    $("#sidebar_content .close").on("click", page.minimizeSidebar);
+    $(".export_form").on("submit", checkSubmit);
 
     update();
     return map.getState();
   };
 
-  page.unload = function() {
+  page.unload = function () {
     map
       .removeLayer(locationFilter)
       .off("moveend", update);

@@ -3,11 +3,12 @@
 These instructions are designed for setting up The Rails Port for development and testing.
 If you want to deploy the software for your own project, then see the notes at the end.
 
-These instructions are based on Ubuntu 12.04 LTS, which is the platform used by the OSMF servers.
+You can install the software directly on your machine, which is the traditional and probably best-supported approach. However, there is an alternative which may be easier: Vagrant. This installs the software into a virtual machine, which makes it easier to get a consistent development environment and may avoid installation difficulties. For Vagrant instructions, see [VAGRANT.md](VAGRANT.md).
+
+These instructions are based on Ubuntu 18.04 LTS, which is the platform used by the OSMF servers.
 The instructions also work, with only minor amendments, for all other current Ubuntu releases, Fedora and MacOSX
 
-We don't recommend attempting to develop or deploy this software on Windows. If you need to use Windows, then
-try developing this sofware using Ubuntu in a virtual machine.
+We don't recommend attempting to develop or deploy this software on Windows. If you need to use Windows, then try developing this software using Ubuntu in a virtual machine, or use [Vagrant](VAGRANT.md).
 
 ## Dependencies
 
@@ -17,25 +18,22 @@ of packages required before you can get the various gems installed.
 
 ## Minimum requirements
 
-* Ruby 1.9.3
-* RubyGems 1.3.1+
-* Postgres 8.3+
+* Ruby 2.5+
+* PostgreSQL 9.1+
 * ImageMagick
 * Bundler
 * Javascript Runtime
 
-These can be installed on Ubuntu 10.10 or later with:
+These can be installed on Ubuntu 16.04 or later with:
 
 ```
-sudo apt-get install ruby1.9.1 libruby1.9.1 ruby1.9.1-dev ri1.9.1 \
+sudo apt-get install ruby2.5 libruby2.5 ruby2.5-dev \
                      libmagickwand-dev libxml2-dev libxslt1-dev nodejs \
-                     apache2 apache2-threaded-dev build-essential git-core \
+                     apache2 apache2-dev build-essential git-core \
                      postgresql postgresql-contrib libpq-dev postgresql-server-dev-all \
-                     libsasl2-dev
-gem1.9.1 install bundle
+                     libsasl2-dev imagemagick libffi-dev
+sudo gem2.5 install bundler
 ```
-
-Note that the "1.9.1" Ubuntu packages do in fact contain ruby 1.9.3.
 
 ### Alternative platforms
 
@@ -48,17 +46,17 @@ sudo yum install ruby ruby-devel rubygem-rdoc rubygem-bundler rubygems \
                  libxml2-devel js \
                  gcc gcc-c++ git \
                  postgresql postgresql-server postgresql-contrib postgresql-devel \
-                 perl-podlators
+                 perl-podlators ImageMagick libffi-devel
 ```
 
-If you didn't already have Postgres installed then create a Postgres instance and start the server:
+If you didn't already have PostgreSQL installed then create a PostgreSQL instance and start the server:
 
 ```
 sudo postgresql-setup initdb
 sudo systemctl start postgresql.service
 ```
 
-Optionally set Postgres to start on boot:
+Optionally set PostgreSQL to start on boot:
 
 ```
 sudo systemctl enable postgresql.service
@@ -68,10 +66,10 @@ sudo systemctl enable postgresql.service
 
 For MacOSX, you will need XCode installed from the Mac App Store; OS X 10.7 (Lion) or later; and some familiarity with Unix development via the Terminal.
 
-Installing Postgres:
+Installing PostgreSQL:
 
-* Install Postgres.app from http://postgresapp.com/
-* Add Postgres to your path, by editing your profile:
+* Install Postgres.app from https://postgresapp.com/
+* Add PostgreSQL to your path, by editing your profile:
 
 `nano ~/.profile`
 
@@ -81,10 +79,12 @@ and adding:
 
 Installing other dependencies:
 
-* Install Homebrew from http://mxcl.github.io/homebrew/
-* Install the latest version of Ruby: brew install ruby
-* Install ImageMagick: brew install imagemagick
-* Install Bundler: gem install bundler
+* Install Homebrew from https://brew.sh/
+* Install the latest version of Ruby: `brew install ruby`
+* Install ImageMagick: `brew install imagemagick`
+* Install libxml2: `brew install libxml2 --with-xml2-config`
+* If you want to run the tests, you need `phantomjs` as well: `brew install phantomjs`
+* Install Bundler: `gem install bundler`
 
 Note that OS X does not have a /home directory by default, so if you are using the GPX functions, you will need to change the directories specified in config/application.yml.
 
@@ -114,16 +114,6 @@ cd openstreetmap-website
 bundle install
 ```
 
-## Application setup
-
-We need to create the `config/application.yml` file from the example template. This contains various configuration options.
-
-```
-cp config/example.application.yml config/application.yml
-```
-
-You can customize your installation of The Rails Port by changing the values in `config/application.yml`
-
 ## Database setup
 
 The Rails Port uses three databases -  one for development, one for testing, and one for production. The database-specific configuration
@@ -139,7 +129,7 @@ instructions below as appropriate.
 
 ### PostgreSQL account setup
 
-We need to create a PostgreSQL role (i.e. user account) for your current user, and it needs to be a superuser so that we can create more database.
+We need to create a PostgreSQL role (i.e. user account) for your current user, and it needs to be a superuser so that we can create more databases.
 
 ```
 sudo -u postgres -i
@@ -157,15 +147,7 @@ bundle exec rake db:create
 
 ### PostgreSQL Btree-gist Extension
 
-We need to load the btree-gist extension, which is needed for showing changesets on the history tab.
-
-For PostgreSQL < 9.1 (change the version number in the path as necessary):
-
-```
-psql -d openstreetmap < /usr/share/postgresql/9.0/contrib/btree_gist.sql
-```
-
-For PostgreSQL >= 9.1:
+We need to load the `btree-gist` extension, which is needed for showing changesets on the history tab.
 
 ```
 psql -d openstreetmap -c "CREATE EXTENSION btree_gist"
@@ -173,7 +155,7 @@ psql -d openstreetmap -c "CREATE EXTENSION btree_gist"
 
 ### PostgreSQL Functions
 
-We need to install special functions into the postgresql databases, and these are provided by a library that needs compiling first.
+We need to install special functions into the PostgreSQL databases, and these are provided by a library that needs compiling first.
 
 ```
 cd db/functions
@@ -202,7 +184,7 @@ bundle exec rake db:migrate
 To ensure that everything is set up properly, you should now run:
 
 ```
-bundle exec rake test
+bundle exec rake test:db
 ```
 
 This test will take a few minutes, reporting tests run, assertions, and any errors. If you receive no errors, then your installation is successful.

@@ -13,6 +13,8 @@ module GPX
     end
 
     def points
+      return enum_for(:points) unless block_given?
+
       @possible_points = 0
       @actual_points = 0
       @tracksegs = 0
@@ -28,13 +30,13 @@ module GPX
           if reader.name == "trkpt"
             point = TrkPt.new(@tracksegs, reader["lat"].to_f, reader["lon"].to_f)
             @possible_points += 1
-          elsif reader.name == "ele" and point
+          elsif reader.name == "ele" && point
             point.altitude = reader.read_string.to_f
-          elsif reader.name == "time" and point
-            point.timestamp = DateTime.parse(reader.read_string)
+          elsif reader.name == "time" && point
+            point.timestamp = Time.parse(reader.read_string)
           end
         elsif reader.node_type == XML::Reader::TYPE_END_ELEMENT
-          if reader.name == "trkpt" and point and point.valid?
+          if reader.name == "trkpt" && point && point.valid?
             point.altitude ||= 0
             yield point
             @actual_points += 1
@@ -45,79 +47,47 @@ module GPX
       end
     end
 
-    def picture(min_lat, min_lon, max_lat, max_lon, num_points)
-      frames = 10
+    def picture(min_lat, min_lon, max_lat, max_lon, _num_points)
+      # frames = 10
       width = 250
       height = 250
       proj = OSM::Mercator.new(min_lat, min_lon, max_lat, max_lon, width, height)
 
-      linegc = Magick::Draw.new
-      linegc.stroke_linejoin('miter')
-      linegc.stroke_width(1)
-      linegc.stroke('#BBBBBB')
-      linegc.fill('#BBBBBB')
+      # TODO: create animated gif
+      # https://github.com/openstreetmap/openstreetmap-website/issues/281
+      image = GD2::Image::IndexedColor.new(width, height)
 
-      highlightgc = Magick::Draw.new
-      highlightgc.stroke_linejoin('miter')
-      highlightgc.stroke_width(3)
-      highlightgc.stroke('#000000')
-      highlightgc.fill('#000000')
+      black = image.palette.allocate(GD2::Color[0, 0, 0])
+      white = image.palette.allocate(GD2::Color[255, 255, 255])
 
-      images = []
-
-      frames.times do
-        image = Magick::Image.new(width, height) do |image|
-          image.background_color = 'white'
-          image.format = 'GIF'
-        end
-
-        images << image
+      image.draw do |pen|
+        pen.color = white
+        pen.rectangle(0, 0, width, height, true)
       end
 
-      oldpx = 0.0
-      oldpy = 0.0
+      image.draw do |pen|
+        pen.color = black
+        pen.anti_aliasing = true
+        pen.dont_blend = false
 
-      first = true
+        oldpx = 0.0
+        oldpy = 0.0
 
-      m = 0
-      mm = 0
-      points do |p|
-        px = proj.x(p.longitude)
-        py = proj.y(p.latitude)
+        first = true
 
-        if m > 0
-          frames.times do |n|
-            if n == mm
-              gc = highlightgc.dup
-            else
-              gc = linegc.dup
-            end
+        points do |p|
+          px = proj.x(p.longitude)
+          py = proj.y(p.latitude)
 
-            gc.line(px, py, oldpx, oldpy)
+          pen.line(px, py, oldpx, oldpy) unless first
 
-            gc.draw(images[n])
-          end
+          first = false
+          oldpy = py
+          oldpx = px
         end
-
-        m += 1
-        if m > num_points.to_f / frames.to_f * (mm+1)
-          mm += 1
-        end
-
-        oldpy = py
-        oldpx = px
       end
 
-      il = Magick::ImageList.new
-
-      images.each do |f|
-        il << f
-      end
-
-      il.delay = 50
-      il.format = 'GIF'
-
-      return il.to_blob
+      image.gif
     end
 
     def icon(min_lat, min_lon, max_lat, max_lon)
@@ -125,44 +95,47 @@ module GPX
       height = 50
       proj = OSM::Mercator.new(min_lat, min_lon, max_lat, max_lon, width, height)
 
-      gc = Magick::Draw.new
-      gc.stroke_linejoin('miter')
-      gc.stroke_width(1)
-      gc.stroke('#000000')
-      gc.fill('#000000')
+      image = GD2::Image::IndexedColor.new(width, height)
 
-      image = Magick::Image.new(width, height) do |image|
-        image.background_color = 'white'
-        image.format = 'GIF'
+      black = image.palette.allocate(GD2::Color[0, 0, 0])
+      white = image.palette.allocate(GD2::Color[255, 255, 255])
+
+      image.draw do |pen|
+        pen.color = white
+        pen.rectangle(0, 0, width, height, true)
       end
 
-      oldpx = 0.0
-      oldpy = 0.0
+      image.draw do |pen|
+        pen.color = black
+        pen.anti_aliasing = true
+        pen.dont_blend = false
 
-      first = true
+        oldpx = 0.0
+        oldpy = 0.0
 
-      points do |p|
-        px = proj.x(p.longitude)
-        py = proj.y(p.latitude)
+        first = true
 
-        gc.dup.line(px, py, oldpx, oldpy).draw(image) unless first
+        points do |p|
+          px = proj.x(p.longitude)
+          py = proj.y(p.latitude)
 
-        first = false
-        oldpy = py
-        oldpx = px
+          pen.line(px, py, oldpx, oldpy) unless first
+
+          first = false
+          oldpy = py
+          oldpx = px
+        end
       end
 
-      return image.to_blob
+      image.gif
     end
   end
 
-private
-
-  class TrkPt < Struct.new(:segment, :latitude, :longitude, :altitude, :timestamp)
+  TrkPt = Struct.new(:segment, :latitude, :longitude, :altitude, :timestamp) do
     def valid?
-      self.latitude and self.longitude and self.timestamp and
-      self.latitude >= -90 and self.latitude <= 90 and
-      self.longitude >= -180 and self.longitude <= 180
+      latitude && longitude && timestamp &&
+        latitude >= -90 && latitude <= 90 &&
+        longitude >= -180 && longitude <= 180
     end
   end
 end

@@ -20,12 +20,16 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 module SessionPersistence
-  private
+  class << self
+    private
 
-  # Install filter when we are included
-  def self.included(controller)
-    controller.after_filter :persist_session
+    # Install filter when we are included
+    def included(controller)
+      controller.after_action :persist_session
+    end
   end
+
+  private
 
   # Override this method if you don't want to use session[:_remember_for].
   def session_persistence_key
@@ -37,7 +41,7 @@ module SessionPersistence
   #   session_expires_after 1.hour
   #   session_expires_after 2.weeks
   def session_expires_after(seconds)
-    session[session_persistence_key] = seconds 
+    session[session_persistence_key] = seconds.to_i
   end
 
   # Expire the session.
@@ -48,10 +52,8 @@ module SessionPersistence
 
   # Filter callback
   def persist_session
-    if session[session_persistence_key]
-      request.session_options[:expire_after] = session[session_persistence_key]
-    end
-  rescue
+    request.session_options[:expire_after] = session[session_persistence_key] if session[session_persistence_key]
+  rescue StandardError
     reset_session
   end
 end

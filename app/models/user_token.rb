@@ -1,3 +1,23 @@
+# == Schema Information
+#
+# Table name: user_tokens
+#
+#  id      :integer          not null, primary key
+#  user_id :integer          not null
+#  token   :string           not null
+#  expiry  :datetime         not null
+#  referer :text
+#
+# Indexes
+#
+#  user_tokens_token_idx    (token) UNIQUE
+#  user_tokens_user_id_idx  (user_id)
+#
+# Foreign Keys
+#
+#  user_tokens_user_id_fkey  (user_id => users.id)
+#
+
 class UserToken < ActiveRecord::Base
   belongs_to :user
 
@@ -7,10 +27,10 @@ class UserToken < ActiveRecord::Base
     expiry < Time.now
   end
 
-private
+  private
 
   def set_defaults
-    self.token = OSM::make_token() if self.token.blank?
-    self.expiry = 1.week.from_now if self.expiry.blank?
+    self.token = OSM.make_token if token.blank?
+    self.expiry = 1.week.from_now if expiry.blank?
   end
 end
